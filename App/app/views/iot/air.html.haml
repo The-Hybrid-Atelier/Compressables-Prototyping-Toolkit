@@ -1,0 +1,186 @@
+:coffeescript
+  window.NAME = "air-control"
+  window.VERSION = "1.0"
+  window.DEFAULT_EVENTS = "SQUEEZE NO_SQUEEZE UN_SQUEEZE SQUEEZE_HOLD HIGH_PRESSURE"
+
+
+  window.setup_smoothie = (options)->
+    $('#stream-canvas').replaceWith($('#stream-canvas').clone())
+    sc = $('#stream-canvas')
+    
+    streamCanvas = $(sc).attr('width', $('#stream-canvas').parent().width())
+    if sc.parent().hasClass('fullscreen-mode')
+      streamCanvas.attr('height', 500)
+    else
+      streamCanvas.attr('height', 100)
+    
+    window.line1 = new TimeSeries
+
+    if options and options.mode
+      smoothie = new SmoothieChart
+        maxValue: 100
+        minValue: 60
+        grid:
+          millisPerLine:3000
+        labels:
+          fontSize:15
+      smoothie.streamTo(streamCanvas[0]);
+      smoothie.addTimeSeries line1, 
+        strokeStyle:'rgb(226, 69, 133)'
+        fillStyle:'rgba(226, 69, 133, 0.4)'
+        lineWidth: 3
+    else
+      smoothie = new SmoothieChart
+        maxValue: 100
+        minValue: 60
+      smoothie.streamTo(streamCanvas[0]);
+      smoothie.addTimeSeries line1, 
+        strokeStyle:'rgb(0, 255, 0)'
+        fillStyle:'rgba(0, 255, 0, 0.4)'
+        lineWidth: 1
+
+    $(document).on "read-pressure", (event, stream)->
+      t_0 = stream.time
+      _.each stream.data, (d, i)->
+        window.line1.append((new Date).getTime(), d)
+  window.emulateReading = ()->
+    $(document).trigger "read-pressure", 
+      data: [Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100]
+  $ -> 
+    setup_editor()
+    setup_smoothie()
+
+
+
+        
+/ IoT Websocket
+.fullscreen-mode
+.ui.form.panel
+  .ui.attached.top.inverted.segment.socket-state#control-panel
+    .ui.header.inverted
+      AIR CONTROL PANEL
+      .sub.header#url
+      .event-listener
+        %span.event SQUEEZE
+  .ui.segment.attached.toolbar-container#streamer
+    .event-listener
+      %span.event SQUEEZE
+    %canvas#stream-canvas{height: 100}
+    .toolbar
+      %button.fullscreen-toggle.ui.toolbutton.button.icon.circular.mini.blue.toggle
+        %i.ui.icon.expand
+  .ui.segment.attached#server-control
+    %form.ui.form.server-control.tiny.equal.width
+      .three.fields
+        .field
+          %label CLOUD
+          .ui.labeled.input
+            .ui.label ws://   
+            %input.param{type:"text", name:"host", value:"162.243.120.86"}
+        .field
+          %label PORT
+          %input.param{type:"number", name:"port", value: 3001}
+        .field
+          %label &nbsp;
+          %button.connect.blue.ui.button.small.fluid{type:"submit"}
+            CONNECT
+
+  .ui.segment.attached
+    .bar
+      %span LOG
+      %button.ui.button.icon.circular.tiny.blue.right.floated.toggle
+        %i.ui.icon.eye
+    #editor.editor
+  
+
+  .ui.segment.attached.bottom
+    / ELEMENTARY ACTIONS
+    .api
+      %input.param{type:"hidden", name:"pumpNumber", value: 1}
+      
+      .field
+        .centered
+          .ui.buttons
+            .ui.buttons.button-checkmark.vertical{name:"pumpNumber"}
+              %button.ui.button.toggle{value: 2}
+                PUMP
+              %button.ui.button.blue.selected.toggle{value: 1}
+                VACUUM
+            .gap
+            .ui.buttons.button-checkmark.vertical{name:"PWM"}
+              %p
+                %input.param{type:"number", name:"PWM", value: 0, height: 20}
+              %button.ui.button{value: 100} AFAP
+              %button.ui.button{value: 75} 3
+              %button.ui.button{value: 50} 2
+              %button.ui.button{value: 25} 1
+              %button.ui.button.blue.selected{value: 0} OFF
+              
+            .gap
+            %button.ui.button.api.icon.circular.blue.disabled{data: {command: "PUMP_ON"}}
+              %i.icon.send
+    %hr
+    .api
+      %input.param{type:"hidden", name:"pumpNumber", value: 1}
+      .field
+        .centered
+          .ui.buttons
+            .ui.buttons.button-checkmark.vertical{name:"pumpNumber"}
+              %button.ui.button.toggle{value: 2}
+                PUMP
+              %button.ui.button.blue.selected.toggle{value: 1}
+                VACUUM
+            .ui.buttons.vertical
+              %button.ui.button.api.blue.disabled{data: {command: "PUMP_OFF"}}
+                OFF
+    %hr
+    .centered
+      .ui.buttons
+        .ui.vertical.labeled.icon.buttons
+          %button.ui.button.basic.api.disabled{data: {command: "BLOW"}}
+            %i.sign-in.icon
+            BLOW
+          %button.ui.button.basic.api.disabled{data: {command: "SUCK"}}
+            %i.sign-out.icon
+            SUCK
+          %button.ui.button.basic.api.disabled{data: {command: "VENT"}}
+            %i.external.alternate.icon
+            VENT
+          %button.ui.button.basic.api.disabled{data: {command: "SEAL"}}
+            %i.icon.compress
+            SEAL
+          %button.ui.button.basic.api.disabled{data: {command: "RELEASE"}}
+            %i.icon.expand
+            RELEASE
+        .gap
+        .ui.buttons.vertical
+          %button.ui.button.api.disabled.basic{data: {command: "PRESSURE_ON"}}
+            PRESSURE_ON
+          %button.ui.button.api.disabled.basic{data: {command: "PRESSURE_OFF"}}
+            PRESSURE_OFF
+    %hr
+    .centered
+      .ui.buttons
+        / HIGHER LEVEL BEHAVIORS
+        .ui.buttons.vertical
+          %button.ui.button.api.disabled.basic{data: {command: "ALL_PUMP_OFF"}}
+            ALL_PUMP_OFF
+          %button.ui.button.api.disabled.basic{data: {command: "PULSE_ON"}}
+            PULSE
+          %button.ui.button.api.disabled.basic{data: {command: "PULSE_OFF"}}
+            PULSE_OFF
+         
+        .gap
+        / COMMON ACTIONS
+        .ui.buttons.vertical
+          %button.ui.button.api.disabled.basic{data: {command: "BATTERY"}}
+            BATTERY_STATUS
+          %button.ui.button.api.disabled.basic{data: {command: "MANIFEST"}}
+            MANIFEST  
+          %button.ui.button.api.disabled.basic{data: {command: "SERVER_STATE"}}
+            SERVER_STATE
+        
+
+          
+
+        

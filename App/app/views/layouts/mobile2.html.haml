@@ -1,0 +1,64 @@
+!!!
+%html
+  %head
+    %meta{:content => "text/html; charset=UTF-8", "http-equiv" => "Content-Type"}/
+    %meta{:content => "width=device-width, initial-scale=1.0, minimum-scale=1.0 maximum-scale=1.0", :name => "viewport"}/
+    %meta{:content => "yes", :name => "apple-mobile-web-app-capable"}/
+    %meta{:content => "black-translucent", :name => "apple-mobile-web-app-status-bar-style"}/
+    %meta{:content => "Hum, Rattle, and Purr", :name => "apple-mobile-web-app-title"}/
+    %link{rel: "apple-touch-icon", href:"/apple-touch-icon.png"}
+    %title Squeeze, Clench, and Choke
+
+    %link{:href => "splashscreens/iphone5_splash.png", :media => "(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/iphone6_splash.png", :media => "(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/iphoneplus_splash.png", :media => "(device-width: 621px) and (device-height: 1104px) and (-webkit-device-pixel-ratio: 3)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/iphonex_splash.png", :media => "(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/iphonexr_splash.png", :media => "(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/iphonexsmax_splash.png", :media => "(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/ipad_splash.png", :media => "(device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/ipadpro1_splash.png", :media => "(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/ipadpro3_splash.png", :media => "(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+    %link{:href => "splashscreens/ipadpro2_splash.png", :media => "(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)", :rel => "apple-touch-startup-image"}/
+
+
+    = stylesheet_link_tag    'application', media: 'all', 'data-turbolinks-track' => true
+ 
+    = javascript_include_tag 'application', 'data-turbolinks-track' => false
+    = javascript_include_tag 'iot', 'data-turbolinks-track' => false
+
+    = csrf_meta_tags
+  
+  %body{ontouchstart:"", state: "schemes"}
+    = yield
+    #navbar.ui.menu.inverted.pointing
+      .menu
+        %a.item{"data-view":"interaction"}
+          Interaction
+
+:coffeescript
+  start = "interaction"
+  $ ->    
+    $('#navbar .menu a').click (event)->
+      view = $(this).data("view")
+      $(this).addClass('active').siblings().removeClass('active')
+      $('#view-container').attr('state', view)
+      $('body').attr('state', view)
+    $(".view").on "swipeleft", swipeleft
+    $(".view").on "swiperight", swiperight
+    searchParams = new URLSearchParams(window.location.search)
+    if searchParams.get("view")
+      start = searchParams.get("view")
+    $("a[data-view='"+start+"']").click()
+  
+  window.swipeleft = (event)->
+    view = $(this).attr('next')
+    if view != null
+      $('a[data-view="'+view+'"]').click()
+
+  window.swiperight = (event)->
+    view = $(this).attr('prev')
+    if view != null
+      $('a[data-view="'+view+'"]').click()
+      
+
+= render :partial =>  "layouts/pill"

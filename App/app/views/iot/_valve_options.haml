@@ -1,0 +1,36 @@
+#valve-options.ui.longer.modal
+  .header Valve Options
+  .content
+    .ui.message
+      Customize valve command visibility.
+    %form.ui.form
+      .field
+        .ui.checkbox
+          %input{type:"checkbox", name: "blow", checked: "", data: {command: "BLOW"}}
+          %label BLOW
+      .field
+        .ui.checkbox
+          %input{type:"checkbox", name: "suck", checked: "", data: {command: "SUCK"}}
+          %label SUCK
+      .field
+        .ui.checkbox
+          %input{type:"checkbox", name: "vent", checked: "", data: {command: "VENT"}}
+          %label VENT
+      .field
+        .ui.checkbox
+          %input{type:"checkbox", name: "seal", data: {command: "SEAL"}}
+          %label SEAL
+      .field
+        .ui.checkbox
+          %input{type:"checkbox", name: "release", data: {command: "RELEASE"}}
+          %label RELEASE
+      
+      
+  .actions
+    .ui.buttons
+      .ui.cancel.button Cancel
+      .ui.approve.button.green 
+        %i.icon.save
+        Save
+
+    

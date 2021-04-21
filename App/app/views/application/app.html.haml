@@ -1,0 +1,9 @@
+#view-container{state: "schemes"}
+  .view.active{name: "schemes", prev: "null", next: "records"}
+    = render :partial => "label_schemes/index"
+  .view{name: "records", prev: "schemes", next: "data_models"}
+    = render :partial => "records/index"
+  .view{state: "model", name: "data_models", prev: "records", next: "feedback"}
+    - render :partial => "data_models/index"
+  .view{name: "feedback", prev: "data_models", next: "null"}
+    - render :partial => "feedbacks/index"

@@ -1,0 +1,93 @@
+:coffeescript
+  window.NAME = "video-control"
+  window.VERSION = "1.0"
+  window.onYouTubeIframeAPIReady = ->
+    console.log "Youtube loaded"
+    window.player = new (YT.Player)('player',
+      height: '390'
+      width: '640'
+      videoId: 'M7lc1UVf-VE'
+      events:
+        'onReady': ()->
+          console.log "Youtube API ready."
+        'onStateChange': ()->
+          console.log "Youtube State Change")
+    return
+
+
+
+  # onPlayerStateChange = (event) ->
+  #   if event.data == YT.PlayerState.PLAYING and !done
+  #     setTimeout stopVideo, 6000
+  #     done = true
+  #   return
+
+  $ -> 
+    setup_editor()
+
+    $(document).on "video", (event, message)->
+      console.log "VIDEO!", message
+      params = message.params
+      if player
+        api = {}
+        if not _.isUndefined(params.params2)
+          player[params.action](params.params1, params.params2)
+          console.log "action2", params.action, params.params1, params.params2
+        else if not _.isUndefined(params.params1)
+          console.log "action1", params.action, params.params1
+          player[params.action](params.params1)
+        else if not _.isUndefined(params.action)
+          console.log "action", params.action
+          player[params.action]()
+        else
+          console.error("No action specified in video command", message)               
+      else
+        console.log "Player has not been loaded yet."
+      
+    window.player = undefined
+    done = false
+
+    tag = $("<script>").attr("src", "https://www.youtube.com/iframe_api")
+    $("body").prepend(tag)
+
+    
+
+        
+/ IoT Websocket
+.fullscreen-mode
+.ui.form.panel
+  .ui.attached.top.inverted.segment.socket-state#control-panel
+    .ui.header.inverted
+      VIDEO CONTROL PANEL
+      .sub.header#url
+      .event-listener
+        %span.event SQUEEZE
+  .ui.segment.attached.toolbar-container
+    #player
+  .ui.segment.attached#server-control
+    %form.ui.form.server-control.tiny.equal.width
+      .three.fields
+        .field
+          %label CLOUD
+          .ui.labeled.input
+            .ui.label ws://   
+            %input.param{type:"text", name:"host", value:"162.243.120.86"}
+        .field
+          %label PORT
+          %input.param{type:"number", name:"port", value: 3001}
+        .field
+          %label &nbsp;
+          %button.connect.blue.ui.button.small.fluid{type:"submit"}
+            CONNECT
+  .ui.segment.attached
+    .bar
+      %span LOG
+      %button.ui.button.icon.circular.tiny.blue.right.floated.toggle
+        %i.ui.icon.eye
+    #editor.editor
+
+        
+
+          
+
+        

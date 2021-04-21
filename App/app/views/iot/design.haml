@@ -1,0 +1,375 @@
+:coffeescript
+  # Application Settings
+  window.NAME = "interaction-app"
+  window.VERSION = "1.0"
+  window.socket = null
+  window.editor = null
+  EMULATOR_ON = false
+
+  window.emulateReading = ()->
+    $(document).trigger "read-pressure", 
+      data: [cb.setpoint + ((Math.random()*10) - 2.5), cb.setpoint + ((Math.random()*10) - 2.5), cb.setpoint + ((Math.random()*10) - 2.5), cb.setpoint + ((Math.random()*10) - 2.5)]
+  
+  window.activeCommands = []     
+  $ -> 
+    console.log "Interaction Design App Initialized"
+    window.cb = new Compressable(window.socket)
+    window.gc = new GestureCanvas
+      canvas: $("canvas")
+    window.stop_command = null
+    # Enable Touch Interactions
+    $(document).on "contextmenu", (event)-> event.preventDefault(); return false;
+    # Emergency Stop and Restart
+    $('[action="restart"]').click ()-> window.cb.status = "ON"; 
+    $('[action="pid_toggle"]').click ()-> 
+      if window.cb.status == "PID"
+        window.cb.status = "ON" 
+      else
+        window.cb.status = "PID" 
+    $('[action="emergency_stop"]').click ()-> 
+      window.cb.status = "STOPPED"; 
+      window.cb.next_setpoint = 0;
+      gc.clear()
+    
+    # Limit Settings
+    $('[action="set_ul"]').on "swiperight", (event)-> window.cb.upper_limit = 100; 
+    $('[action="set_ll"]').on "swiperight", (event)-> window.cb.lower_limit = -100; 
+    $('[action="set_ul"]').on "taphold", (event)-> window.cb.upper_limit = window.cb.setpoint; 
+    $('[action="set_ll"]').on "taphold", (event)-> window.cb.lower_limit = window.cb.setpoint; 
+    $('[action="set_ss"]').on "swiperight", (event)-> window.cb.ss = 50; 
+    $('[action="set_ss"]').on "taphold", (event)-> window.cb.ss = window.cb.setpoint; 
+    $('[action="set_ss"]').on "tap", (event)-> window.cb.setpoint = window.cb.ss 
+    $('[action="hand-toggle"]').click ()-> window.gc.layout = if window.gc.layout == "right-handed" then "left-handed" else "right-handed"; 
+    $('[action="input-toggle"]').click ()-> window.gc.input = if window.gc.input == "instantaneous" then "temporal" else "instantaneous"; 
+    $('[action="save"]').click ()-> gc.load($(this).attr("save_id"));
+    $('[action="save"]').on "taphold", ()-> gc.save($(this).attr("save_id"));
+    $('[action="save"]').on "swiperight", ()-> gc.clear_save($(this).attr("save_id"));
+    
+
+    $('#stop').click ()-> 
+      console.log "Stop initiated: Clearing timeouts"
+       
+      # Clear commands
+      _.each window.activeCommands, (id)->
+        clearTimeout(id)
+        window.activeCommands = []
+
+      # Baseline power reset
+      if window.stop_command
+        console.log("RESET POWER")
+        window.stop_command()
+
+      $('#send').removeClass('disabled')
+
+      # Reset visuals
+      scrubber = paper.project.getItem
+        name: "scrubber"
+      if not scrubber then return
+      scrubber.to(0)
+
+    $('#send').click ()-> 
+      if $(this).hasClass('disabled') then return
+      $('#send').addClass('disabled')
+      commands = gc.command()
+      scrubber = paper.project.getItem
+        name: "scrubber"
+      if not scrubber then return
+      _.each commands, (c, i)->
+        timeout_id = _.delay (()-> 
+          scrubber.to(c[0]); 
+          window.cb.setpoint = c[1]
+          if i == commands.length - 1
+            $('#send').removeClass('disabled')
+        ), c[0]
+        if i == commands.length-1
+          window.stop_command = ()-> 
+            window.cb.setpoint = c[1]
+            $('#send').removeClass('disabled')
+          
+        window.activeCommands.push(timeout_id)
+      
+    # Live pressure readings
+    $(document).on "gesture", (event, msg)-> 
+      console.log "setting gesture settings"
+      if msg["period"]
+        GestureCanvas.GESTURE_TIME = msg["period"]
+        console.log("\tSetting GESTURE_TIME:", msg["period"])
+      if msg["increment"]
+        GestureCanvas.GESTURE_TIME_INCREMENT = msg["increment"]
+    $(document).on "behavior", (event, msg)-> 
+      console.log "Calling behavior", msg["index"].toLowerCase()
+      if msg["index"]
+        if msg["index"] == "stop"
+          $('#stop').click()
+        else
+          gc.load(msg["index"].toLowerCase())
+          $('#send').click()
+
+    $(document).on "read-pressure", (event, msg)-> 
+      sum = _.reduce(data = msg.data, ((x, memo)-> memo = memo + x), 0 )
+      window.cb.pressure = sum / msg.data.length # average value of data packet
+
+    # Emulation
+    if(EMULATOR_ON) then setInterval(emulateReading, 250) # simulate a reading every 250 ms
+
+    # Initial view update; needs to be called whenever state changes.
+    cb.status = "ON"
+    cb.upper_limit = 100
+    cb.lower_limit = -100
+    cb.setpoint = 49
+    cb.next_setpoint = 1
+    cb.pressure = 123
+    gc.input = "instantaneous"
+    gc.ss = 40
+
+        
+/ IoT Websocket
+
+.ui.container.mobile.f
+  #server-control.ccfs.f
+    .ui.segment.attached
+      %form.ui.form.server-control.tiny.equal.width
+        .two.fields
+          .two.field
+            %label HAWS LOCAL
+            .ui.labeled.input
+              .ui.label ws://   
+              %input.param{type:"text", name:"host", value:"162.243.120.86"}
+            %label PORT
+            %input.param{type:"number", name:"port", value: 3001}
+          .field
+            %label &nbsp;
+            %button.connect.blue.ui.button.small.fluid{type:"submit"}
+              CONNECT
+  .ui#controller.left-handed.cce.f
+    .settings.ccfe
+      .ui.cre.fw
+        - if true
+          .ui.button.black.fluid.massive{action: "save", save_id: 'a'} A
+          .ui.button.black.fluid.massive{action: "save", save_id: 'b'} B
+          .ui.button.black.fluid.massive{action: "save", save_id: 'c'} C
+          .ui.button.black.fluid.massive{action: "save", save_id: 'd'} D
+          / .ui.button.black.fluid.massive{action: "save", save_id: 'e'} E
+      -if false
+        .ui.button.fluid.large.purple{action: "pid_toggle"} HOLD
+      .ui.button.fluid.large.purple{action: "hand-toggle"} CHANGE TO RIGHT-HAND
+      .ui.button.fluid.large.blue{action: "input-toggle"} CHANGE TO TIME INPUT MODE
+      .ui.button.badged.large.yellow{action: "set_ul"}
+        SET UPPER LIMIT
+        %span.badge 134
+    .ui.segment#input.crc{mode: "temporal"}
+      .canvas-container
+        %label.instantaneous Swipe up or down to set a new target pressure. Hit send when ready.
+        %label.temporal Draw a 5 second wave.
+        %canvas
+        #controls.cc
+          #send.icon.cc.button
+            %i.icon.send
+          #stop.icon.cc.button
+            %i.icon.stop
+      .state.cc
+        .reading.cc.blue
+          %label.sublabel STATUS
+          %label.status ON
+        .reading.cc.blue
+          %label.sublabel POWER
+          %label.setpoint 130
+          %label.next_setpoint (+3)
+        .reading.cc
+          %label.sublabel PRESSURE
+          %label.process_value 124
+    .settings.ccfs
+      .ui.button.badged.large.yellow.fluid{action: "set_ll"}
+        SET LOWER LIMIT
+        %span.badge 120
+      .ui.button.badged.large.orange.fluid{action: "set_ss"}
+        STEADY STATE
+        %span.badge 40
+      .ui.button.massive.red.fluid{action: "emergency_stop"}
+        EMERGENCY STOP
+      .ui.button.massive.red.fluid{action: "restart"}
+        RESTART
+
+:scss
+  [mode="instantaneous"] label.instantaneous{
+    display: block;
+  }
+  [mode="temporal"] label.instantaneous{
+    display: none;
+  }
+  [mode="temporal"] label.temporal{
+    display: block;
+  }
+  [mode="instantaneous"] label.temporal{
+    display: none;
+  }
+
+  [mode="instantaneous"] #send{
+    display: none;
+  }
+  .sublabel{
+    font-size: 0.5em;
+    font-weight: normal;
+    margin-bottom: 4px;
+  }
+  .state{
+
+  }
+  .settings .button{
+    margin-right: 0px !important;
+    border-radius: 0px !important;
+    width: 100%;
+  }
+  .next_setpoint{
+    color: #5CCA5B;
+  }
+  .right-handed .canvas-container label{
+    pointer-events: none;
+    position: absolute;
+    top: 0px;
+    left: 5px;
+    font-size: 0.7em;
+    line-height: 120%;
+    margin: 20px 65px 20px 20px;
+    font-weight: normal;
+    background: rgba(255, 255, 255, 0.8);
+  }
+  .left-handed .canvas-container label{
+    pointer-events: none;
+    position: absolute;
+    top: 0px;
+    left: 5px;
+    font-size: 0.7em;
+    line-height: 120%;
+    margin: 20px 20px 20px 65px;
+    font-weight: normal;
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  .canvas-container{
+    width: 100%;
+    height: calc(100% - 30px);
+    position: relative;
+  }
+  .reading{
+    margin-bottom: 8px;
+    &.blue{
+      color: #3A84EB;
+    }
+  }
+  .left-handed #controls{
+    left: 5px;
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+  }
+  .right-handed #controls{
+    right: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+  }
+  #controls{
+    z-index: 100;
+    position: absolute;
+    top: 0px;
+    width: 40px;
+    height: calc(100% - 0px) !important;
+  }
+  #send, #stop{
+    
+    padding: 0px 10px;
+    color: white;
+    width: 100%;
+    height: 100%;
+  }
+  #send{
+    background: #5CCA5B;
+  }
+  #stop{
+    background: #EA3733;
+  }
+  .left-handed canvas{
+    margin-left: 40px !important;
+  }
+  .right-handed canvas{
+    margin-right: 40px !important;
+  }
+  .settings{
+    width: 100%;
+  }
+  #input{
+    background: #333;
+    height: 300px;
+    width: 100%;
+    canvas{
+      width: calc(100% - 40px);
+      height: 100%;
+      background: white;
+      border-radius: 5px;
+    }
+    .state{
+      width: 30%;
+      color: white!important;
+      font-size: 1.5em;
+    }
+  }
+  .mobile:not(.connected){
+    #controller{opacity: 0;}
+  }
+  .connected{
+    #server-control{ display:none; }
+  }
+
+  .ui.button.badged{
+    display: flex !important;
+    flex-flow: row nowrap !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+  }
+  span.badge{
+    padding: 6px 8px !important;
+    background: white !important;
+    border-radius: 15px !important;
+    color: black !important;
+    margin-left: 10px;
+  }
+  #controller{
+    height: calc(100% - 44px) !important;
+    margin-top: 0px !important;
+    background: #00A8E1;
+  }
+  .stopped .button[action="emergency_stop"]{
+    display: none !important;
+  }
+  .stopped .button[action="restart"]{
+    display: block !important;
+    background: #5CCA5B;
+  }
+  .button[action="restart"]{
+    display: none !important;
+  }
+
+  /* Disable buttons when stopped */
+
+  .stopped .button:not([action="restart"]), .button.disabled{
+    background: #999 !important;
+    color: #DDD !important;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0);
+    -webkit-touch-callout: none; /* iOS Safari */
+      -webkit-user-select: none; /* Safari */
+       -khtml-user-select: none; /* Konqueror HTML */
+         -moz-user-select: none; /* Old versions of Firefox */
+          -ms-user-select: none; /* Internet Explorer/Edge */
+              user-select: none; /* Non-prefixed version, currently*/
+    .badge{
+      background: #DDD ! important;
+      color: #333 !important;
+    }
+  }
+  .stopped .canvas-container{
+    display:none;
+  }
+
+ 
+
+        

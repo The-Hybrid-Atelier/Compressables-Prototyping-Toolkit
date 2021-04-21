@@ -1,0 +1,37 @@
+#motor-options.ui.longer.modal
+  .header Motor Options
+  .content
+    .ui.message
+      Customize how motor commands are sent to the Programmable Air.
+    %form.ui.form
+      .field
+        .ui.checkbox
+          %input{type:"checkbox", name: "send-live"} 
+          %label Send motor commands immediately.
+        .ui.checkbox
+          %input{type:"checkbox", name: "send-blow"} 
+          %label 
+            Change valve state to
+            %code BLOW
+            on
+            %code PUMP
+            commands
+        .ui.checkbox
+          %input{type:"checkbox", name: "send-suck"} 
+          %label 
+            Change valve state to
+            %code SUCK
+            on
+            %code VACUUM
+            commands            
+    %br    
+ 
+      
+  .actions
+    .ui.buttons
+      .ui.cancel.button Cancel
+      .ui.approve.button.green 
+        %i.icon.save
+        Save
+
+    

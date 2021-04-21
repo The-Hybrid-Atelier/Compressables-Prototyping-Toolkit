@@ -1,0 +1,283 @@
+:coffeescript
+  window.NAME = "compressables"
+  window.VERSION = "1.0"
+  window.DEFAULT_EVENTS = "SQUEEZE NO_SQUEEZE UN_SQUEEZE SQUEEZE_HOLD HIGH_PRESSURE"
+
+  window.ER = null #interval id for sensor emulator
+
+  window.setup_smoothie = (options)->
+    $('#stream-canvas').replaceWith($('#stream-canvas').clone())
+    sc = $('#stream-canvas')
+    
+    streamCanvas = $(sc).attr('width', $('#stream-canvas').parent().width())
+    if sc.parent().hasClass('fullscreen-mode')
+      streamCanvas.attr('height', 500)
+    else
+      streamCanvas.attr('height', 100)
+    
+    window.line1 = new TimeSeries
+
+   
+    if options and options.mode
+      
+      options = _.extend options, 
+        grid:
+          millisPerLine:3000
+        labels:
+          fontSize:15
+
+      smoothie = new SmoothieChart options
+      smoothie.streamTo(streamCanvas[0]);
+      smoothie.addTimeSeries line1, 
+        strokeStyle:'rgb(226, 69, 133)'
+        fillStyle:'rgba(226, 69, 133, 0.4)'
+        lineWidth: 3
+    else
+      smoothie = new SmoothieChart options
+      smoothie.streamTo(streamCanvas[0]);
+      smoothie.addTimeSeries line1, 
+        strokeStyle:'rgb(0, 255, 0)'
+        fillStyle:'rgba(0, 255, 0, 0.4)'
+        lineWidth: 1
+
+    $(document).on "read-pressure", (event, stream)->
+      t_0 = stream.time
+      _.each stream.data, (d, i)->
+        window.line1.append((new Date).getTime(), d)
+     
+      sum = _.reduce stream.data, ((memo, num) ->
+        memo + num
+      ), 0
+      avg = sum / stream.data.length
+      $('.pressure-reading .value').html(avg.toFixed(1))
+
+  window.emulateReading = ()->
+    rp = ()->
+      $(document).trigger "read-pressure", data: [Math.random()*100, Math.random()*100, Math.random()*100, Math.random()*100]
+    return setInterval(rp, 500)
+    
+
+  $ -> 
+    setup_editor()
+    setup_smoothie()
+    $('.modal-trigger').click ()->
+      $(document).trigger("ui-update")
+      trigger = $(this).data('trigger')
+
+      $(trigger)
+        .modal
+          onApprove: (event)->
+            $(document).trigger("ui-save", trigger)
+        .modal('show')
+    $(document).on "overinflation", (e, diff)->
+      # Decrease inflate power by 10%
+      # Decrease inflate power by 20%
+      # Decrease inflate power by 30%
+      # Decrease inflate power by 100%
+      # Increase deflate power by 10%
+      console.log "OI"
+
+    $(document).on "ui-save", (e, id)->
+      if id == "#motor-options"
+        settings = _.pluck($(id).find("form").serializeArray(), "name")
+        if _.includes settings, "send-blow"
+          console.log "setting-change", "send-blow"
+        if _.includes settings, "send-suck"
+          console.log "setting-change", "send-suck"
+        if _.includes settings, "send-live"
+          console.log "setting-change", "send-live"
+      
+      if id == "#valve-options"
+        settings = $(id).find("form").serializeArray()
+        settings = _.object _.pluck(settings, "name"), _.pluck(settings, "value")
+        _.each settings, (value, key)-> settings[key] = if settings[key] == "on" then true else value
+        
+
+        valves = $("#valves")
+        valves.html("")
+        _.each settings, (value, key)->
+          if value
+            valve = $('<button class="ui button api green">')
+            valve.data($("input[name="+key+"]").data())
+            valve.html(key.toUpperCase()).click(api_handler)
+            console.log valve
+            valves.append(valve)
+      if id == "#sensor-options"
+        # Process form data
+        settings = $(id).find("form").serializeArray()
+        settings = _.object _.pluck(settings, "name"), _.pluck(settings, "value")
+        _.each settings, (value, key)-> settings[key] = if settings[key] == "on" then true else value
+        
+        # Process sensor streaming commands
+        if settings.sensor_pressure
+          if not window.ER
+            console.log "Starting pressure stream"
+            window.ER = emulateReading()
+          # socket.jsend {api: {command: "PRESSURE_ON"}}
+        else
+          console.log "Stopping pressure stream"
+          if window.ER
+            clearInterval(window.ER)
+            window.ER = null
+          # socket.jsend {api: {command: "PRESSURE_OFF"}}
+
+        # Update sensor viewer
+        if not settings.fixMaxValue then delete settings.maxValue
+        if not settings.fixMinValue then delete settings.minValue
+        delete settings.sensor_pressure
+        
+        setup_smoothie(settings)
+        console.log "sensor-settings", settings
+
+
+
+
+        
+/ IoT Websocket
+.fullscreen-mode
+.ui.form.panel.page
+  - render "connect"
+  = render "event_options"
+  = render "motor_options"
+  = render "sensor_options"
+  = render "valve_options"
+  .ui.segment.attached.centered-row.blue.inverted
+    %label EVENT
+    
+    .event-logger
+      %span.event.disabled LISTENING...
+    %button.ui.button.tiny.icon.circular.primary.modal-trigger{"data-trigger": "#event-options"}
+      %i.ui.icon.settings
+  - if false
+    .ui.segment.attached.black.inverted
+      .centered-row
+        %label INTERACTION
+        %button.ui.button.tiny.icon.circular.primary.modal-trigger{"data-trigger": "#event-options"}
+          %i.ui.icon.settings
+      .gap
+      .centered-row.inv
+        %table.ui.table.compact.unstackable.celled
+          / %thead.compact
+          /   %tr
+          /     %th EVENT
+          /     %th LOGIC
+          /     %th ACTION
+          %tbody
+            %tr
+              %td.event
+                PRESSURE_GUARD
+              
+            %tr
+              %td.event
+                LIVES
+              
+        
+            %tr.disabled
+              %td 
+                GHOST_DEATH
+            
+
+  .ui.segment.attached.toolbar-container#streamer.black.inverted
+    .bar.centered-row
+      %label SENSOR STREAM VIEWER
+      %button.ui.button.tiny.icon.circular.primary.modal-trigger{"data-trigger": "#sensor-options"}
+        %i.ui.icon.settings 
+
+    .event-listener
+      %span.event SQUEEZE
+    %canvas#stream-canvas{height: 100}
+    .toolbar
+      %button.fullscreen-toggle.ui.toolbutton.button.icon.circular.mini.toggle
+        %i.ui.icon.expand
+    .pressure-reading 
+      %span.value -
+      %span.unit kPa
+    
+
+  
+  
+
+  .ui.segment.attached
+    .bar.centered-row
+      %label MOTOR CONTROLS
+      %button.ui.button.tiny.icon.circular.primary.modal-trigger{"data-trigger": "#motor-options"}
+        %i.ui.icon.settings
+    / ELEMENTARY ACTIONS
+    .centered   
+      / PWM SELECTOR
+      .field.api.equal.cre
+        .centered-column
+          %label DEFLATE
+          %input.param{type:"hidden", name:"pumpNumber", value: 1}
+          .ui-slider.centered-column
+            %input.param{type:"number", name:"PWM", value: 0, height: 20}
+            %slider.vertical
+              %island.target
+            %button.ui.button.blue.selected.fluid.attached.bottom{value: 0} OFF
+        / %button.ui.button.api.icon.circular.blue.disabled{data: {command: "PUMP_ON"}}
+        /   %i.icon.send
+      / PWM SELECTOR
+      .field.api.equal.cre
+        .centered-column
+          %label INFLATE
+          %input.param{type:"hidden", name:"pumpNumber", value: 2}
+          .ui-slider.centered-column
+            %input.param{type:"number", name:"PWM", value: 0, height: 20}
+            %slider.vertical
+              %island.target
+            %button.ui.button.blue.selected.fluid.attached.bottom{value: 0} OFF
+        / %button.ui.button.api.icon.circular.blue.disabled{data: {command: "PUMP_ON"}}
+        /   %i.icon.send
+      .field.api.equal.cre
+        .centered-column
+          %label PRESSURE
+          %input.param{type:"hidden", name:"pumpNumber", value: 2}
+          .ui-slider.centered-column
+            %input.param{type:"number", name:"PWM", value: 0, height: 20}
+            %slider.vertical.pressure
+              %island.target
+              %island.observed
+            %button.ui.button.blue.selected.fluid.attached.bottom SET
+
+  .ui.attached.segment
+    .bar.centered-row
+      %label VALVE CONTROLS
+      %button.ui.button.tiny.icon.circular.primary.modal-trigger{"data-trigger": "#valve-options"}
+        %i.ui.icon.settings
+    .cre
+      .ui.buttons
+        .ui.buttons#valves
+          %button.ui.button.api.disabled{data: {command: "BLOW"}}
+            BLOW
+          %button.ui.button.api.disabled{data: {command: "SUCK"}}
+            SUCK
+          %button.ui.button.api.disabled{data: {command: "VENT"}}
+            VENT
+         
+    - if false    
+      %hr
+      .centered
+        .ui.buttons
+          / HIGHER LEVEL BEHAVIORS
+          .ui.buttons.vertical
+            %button.ui.button.api.disabled.basic{data: {command: "ALL_PUMP_OFF"}}
+              ALL_PUMP_OFF
+            %button.ui.button.api.disabled.basic{data: {command: "PULSE_ON"}}
+              PULSE
+            %button.ui.button.api.disabled.basic{data: {command: "PULSE_OFF"}}
+              PULSE_OFF
+           
+          .gap
+          / COMMON ACTIONS
+          .ui.buttons.vertical
+            %button.ui.button.api.disabled.basic{data: {command: "BATTERY"}}
+              BATTERY_STATUS
+            %button.ui.button.api.disabled.basic{data: {command: "MANIFEST"}}
+              MANIFEST  
+            %button.ui.button.api.disabled.basic{data: {command: "SERVER_STATE"}}
+              SERVER_STATE
+          
+
+          
+
+        
