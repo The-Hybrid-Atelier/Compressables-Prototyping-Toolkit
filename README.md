@@ -18,9 +18,9 @@ This repository is the official implementation of the DIS2021 paper [Compressabl
 * This [instructable](https://www.instructables.com/Compressable-Stress-Glove/) walks through the stress glove exemplar fabrication process and how to get started with the toolkit.
 
 ## Haptic Designer App
-*  [Source Code](https://github.com/The-Hybrid-Atelier/Compressables-Prototyping-Toolkit/tree/main/App)
+*  [Source Code](https://github.com/The-Hybrid-Atelier/Compressables-Design-Tool)
 *  [Online App](http://compressables.cearto.com/)
-*  [Server](https://github.com/The-Hybrid-Atelier/Compressables-Prototyping-Toolkit/tree/main/Server)
+*  [Server](https://github.com/The-Hybrid-Atelier/Compressables-Design-Tool/tree/main/server)
 
 ## Hardware Configuration
 *  [Programmable Air Source Code](https://github.com/The-Hybrid-Atelier/Compressables-Prototyping-Toolkit/tree/main/Programmable%20Air%20Code)
@@ -28,7 +28,7 @@ This repository is the official implementation of the DIS2021 paper [Compressabl
 
 ## Miscellaneous 
 *  [Exemplar Interaction Scripts](https://github.com/The-Hybrid-Atelier/Compressables-Prototyping-Toolkit/tree/main/Exemplar%20Interactions)
-*  [Gesture Recognizer](https://github.com/The-Hybrid-Atelier/Compressables-Prototyping-Toolkit/tree/main/Gesture%20Recognizer)
+*  [Gesture Recognizer](https://github.com/The-Hybrid-Atelier/Compressables-Design-Tool/blob/main/controller/squeeze_recognizer.py)
 
 
 ## Contributing
