@@ -1,6 +1,6 @@
 # Compressables
 ### A Haptic Prototyping Toolkit for Wearable Compression Based Interfaces
-![Images/TEASER-06](Images)
+![Compressables Toolkit](https://raw.githubusercontent.com/The-Hybrid-Atelier/Compressables-Prototyping-Toolkit/main/Images/TEASER-06.png)
 
 This repository is the official implementation of the DIS2021 paper [Compressables](TODO:LinkToACM).
 
